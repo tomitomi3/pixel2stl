@@ -123,41 +123,53 @@ def ExtrudeZDirection(polygonPoints, pixelValueArray,
 
 if __name__ == "__main__":
     # デフォルト値の設定
-    arg_cluster = 8
-    arg_spacing = 0.5
-    arg_z_height = 5.0
+    default_cluster = 8         # 減色数
+    default_spacing = 0.5       # 1ピクセルの大きさ mm
+    default_z_height = 1.0      # Zの高さ mm
+    default_base_height = 1.0   # ベース長さ mm
+    # True:輝度が高いとZ方向に厚み, False:輝度が低いとZ方向に厚み
+    default_is_bright_z_thickness = True
 
     # 引数から画像パスを取得
     img_path = ""
-    if True:
-        # debug
-        img_path = "QR_797423.png"
+    if len(sys.argv) == 1 or len(sys.argv) != 7:
+        print("Usage:")
+        print(
+            ">python pixel2stl.py [image_path] [cluster] [spacing] [z_height] [z_baseheight] [is_bright_z_thickness]")
+        print("ex:")
+        print(">python pixel2stl.py sample.png 8 0.5 10.0 10.0 1")
+        sys.exit(1)
     else:
-        if len(sys.argv) < 2 and len(img_path) == 0:
-            print(
-                "Usage: python thisscript.py image_path [cluster] [spacing] [z_height]")
-            print("ex: python thisscript.py sample.png 8 0.5 10")
-            sys.exit(1)
         img_path = sys.argv[1]
 
-    # 追加引数が提供されているかどうかに応じて変数を設定
-    cluster = int(sys.argv[2]) if len(sys.argv) > 2 else arg_cluster
-    spacing = float(sys.argv[3]) if len(sys.argv) > 3 else arg_spacing
-    z_height = float(sys.argv[4]) if len(sys.argv) > 4 else arg_z_height
+    # 入力ファイルの存在チェック
+    if not os.path.exists(img_path):
+        print(f"{img_path} is not exist.")
+        sys.exit(1)
+
+    # 追加引数が提供されているかどうかに応じて変数を設定 sys.argv[1]は画像パス
+    cluster = int(sys.argv[2]) if len(sys.argv) > 2 else default_cluster
+    spacing = float(sys.argv[3]) if len(sys.argv) > 3 else default_spacing
+    z_height = float(sys.argv[4]) if len(sys.argv) > 4 else default_z_height
+    z_baseheight = float(sys.argv[5]) if len(sys.argv) > 5 else default_base_height
+    is_bright_z_thickness = bool(int(sys.argv[6])) if len(sys.argv) > 6 else default_is_bright_z_thickness
 
     print(f"Input image path: {img_path}")
-    print(f"Cluster: {cluster}, Spacing: {spacing}, Z height: {z_height}")
+    print(f"Cluster: {cluster}, Spacing: {spacing}, Z height: {z_height}, Z base height: {z_baseheight}, is_bright_z_thickness: {is_bright_z_thickness}")
 
     # 減色してグレースケール画像を入手する
     print(f"input image path:{img_path}")
-    gensyoku_img = Gensyoku(img_path, arg_cluster)
+    gensyoku_img = Gensyoku(img_path, cluster)
     grayscale_img = cv2.cvtColor(gensyoku_img, cv2.COLOR_BGR2GRAY)
     grayscaleArray = np.array(grayscale_img)
 
-    # 0-1正規化と反転（輝度が暗い所をZ方向厚くする）
+    # 0-1正規化
     scale = grayscaleArray.max() - grayscaleArray.min()
     grayscaleArray = (grayscaleArray - grayscaleArray.min()) / scale
-    grayscaleArray = (grayscaleArray * -1.0) + 1.0
+
+    # 輝度情報を元にZ方向反転
+    if is_bright_z_thickness == False:
+        grayscaleArray = (grayscaleArray * -1.0) + 1.0
 
     # 1ピクセルを輝度情報を元にZ方向に押し出す
     rectPolygons = []
@@ -165,7 +177,7 @@ if __name__ == "__main__":
     for x in range(grayscaleArray.shape[0]):
         for y in range(grayscaleArray.shape[1]):
             # 四角形を作る
-            spacing = arg_spacing
+            spacing = default_spacing
             top_left_x = x * spacing
             top_left_y = y * spacing
 
@@ -182,7 +194,8 @@ if __name__ == "__main__":
     zValues = np.array(tempZValues)
 
     # Z方向で押し出し
-    combined_mesh = ExtrudeZDirection(rectPolygons, zValues, arg_z_height, 1.0)
+    combined_mesh = ExtrudeZDirection(
+        rectPolygons, zValues, z_height, z_baseheight)
 
     # STL出力
     filename_without_ext = os.path.splitext(os.path.basename(img_path))[0]

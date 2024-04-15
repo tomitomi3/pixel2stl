@@ -9,12 +9,18 @@ pixel to STL converter / 画像をRGBの輝度情報を元にSTLを生成する�
 
 ## コマンド
 
->python thisscript.py image_path [cluster] [spacing] [z_height]
+> python pixel2stl.py [image_path] [cluster] [spacing] [z_height] [z_baseheight] [is_bright_z_thickness]
 
 * cluster 減色数
-* spascing X,Y座標における1ボクセルの大きさ 単位はmm
-* z_height 高さ 単位はmm 
+* spascing STLにした時の1ピクセルの大きさ 単位はmm
+* z_height STLにした時の高さ 単位はmm 
+* z_baseheight ベース高さ 単位はmm
+* is_bright_z_thickness 暗さを高さにする場合は0, 明るさを高さにする場合は1
 
 ### 例
 
-> python img2stl.py sample.png 8 0.5 10
+> python pixel2stl.py sample.png 2 0.5 10 10 0
+
+| Image | STL |
+|:---:|:---:|
+| <img src="https://github.com/tomitomi3/pixel2stl/blob/main/img/sample.png?raw=true" width="200"/> | <img src="https://github.com/tomitomi3/pixel2stl/blob/main/img/sample_to_stl.PNG?raw=true" width="200"/> |

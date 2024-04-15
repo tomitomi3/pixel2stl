@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     # 引数から画像パスを取得
     img_path = ""
-    if len(sys.argv) == 1 or len(sys.argv) != 7:
+    if len(sys.argv) != 7:
         print("Usage:")
         print(
             ">python pixel2stl.py [image_path] [cluster] [spacing] [z_height] [z_baseheight] [is_bright_z_thickness]")
@@ -177,7 +177,6 @@ if __name__ == "__main__":
     for x in range(grayscaleArray.shape[0]):
         for y in range(grayscaleArray.shape[1]):
             # 四角形を作る
-            spacing = default_spacing
             top_left_x = x * spacing
             top_left_y = y * spacing
 

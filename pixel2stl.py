@@ -5,6 +5,7 @@ import mapbox_earcut as earcut
 import cv2
 import os
 import sys
+import time
 
 # 必要なパッケージ
 # pip install numpy-stl trimesh numpy mapbox-earcut opencv-python
@@ -29,7 +30,7 @@ def Gensyoku(imgpath, cluster=8):
     # クラスター数
     K = cluster
     # K-Meansクラスタリングの実施
-    ret, label, center = cv2.kmeans(
+    _, label, center = cv2.kmeans(
         Z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
     # 各クラスタの中心色リストcenterをunit8に型変換
@@ -122,6 +123,8 @@ def ExtrudeZDirection(polygonPoints, pixelValueArray,
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+
     # デフォルト値の設定
     default_cluster = 8         # 減色数
     default_spacing = 0.5       # 1ピクセルの大きさ mm
@@ -132,7 +135,9 @@ if __name__ == "__main__":
 
     # 引数から画像パスを取得
     img_path = ""
-    if len(sys.argv) != 7:
+    if len(sys.argv) == 1:
+        img_path = "image.png"
+    elif len(sys.argv) != 7:
         print("Usage:")
         print(
             ">python pixel2stl.py [image_path] [cluster] [spacing] [z_height] [z_baseheight] [is_bright_z_thickness]")
@@ -165,7 +170,10 @@ if __name__ == "__main__":
 
     # 0-1正規化
     scale = grayscaleArray.max() - grayscaleArray.min()
-    grayscaleArray = (grayscaleArray - grayscaleArray.min()) / scale
+    if scale != 0:
+        grayscaleArray = (grayscaleArray - grayscaleArray.min()) / scale
+    else:
+        grayscaleArray = np.zeros_like(grayscaleArray)
 
     # 輝度情報を元にZ方向反転
     if is_bright_z_thickness == False:
@@ -202,3 +210,7 @@ if __name__ == "__main__":
     print(f"ouput stl path:{stl_filename}")
 
     combined_mesh.export(stl_filename)
+
+    # 処理時間
+    elapsedTime = time.time() - start_time
+    print(f"time: {elapsedTime:.2f}s")

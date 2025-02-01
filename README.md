@@ -5,7 +5,7 @@ pixel to STL converter / 画像をRGBの輝度情報を元にSTLを生成する�
 
 ## 必要なパッケージのインストール
 
-> pip install numpy-stl trimesh numpy mapbox-earcut opencv-python 
+> pip install trimesh==4.6.1 numpy opencv-python shapely manifold3d==3.0.1
 
 ## コマンド
 

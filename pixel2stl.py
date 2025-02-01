@@ -1,15 +1,13 @@
-from stl import mesh
 import trimesh
 import numpy as np
-import mapbox_earcut as earcut
 import cv2
 import os
 import sys
 import time
+from shapely.geometry import Polygon
 
 # 必要なパッケージ
-# pip install numpy-stl trimesh numpy mapbox-earcut opencv-python
-
+# pip install trimesh==4.6.1 numpy opencv-python shapely manifold3d==3.0.1
 
 def Gensyoku(imgpath, cluster=8):
     # K-Meansクラスタリングによる画像の減色
@@ -59,67 +57,20 @@ def ExtrudeZDirection(polygonPoints, pixelValueArray,
         if pixel_height == 0:
             continue
 
-        # 頂点情報の取得
-        num_vertices = len(points)
-        vertices = np.zeros((num_vertices * 2, 3))
-        for j in range(num_vertices):
-            vertices[j, :2] = points[j]
-            vertices[j, 2] = 0
-            vertices[num_vertices + j, :2] = points[j]
-            vertices[num_vertices + j, 2] = pixel_height
+        # pointsをshapelyのPolygonに変換
+        polygon = Polygon(points)
 
-        # 頂点情報を組み合わせた座標データ
-        verts = np.array(points)
-
-        # 非凸ポリゴンを三角形に分割するけど、普通のtriangulationでもよい気がする
-        rings = np.array([len(verts)])
-        triangles = earcut.triangulate_float32(verts, rings)
-
-        # 分割三角毎にreshape
-        triangles = triangles.reshape(-1, 3)
-
-        # 上面と下面の面を定義
-        top_faces = []
-        bottom_faces = []
-        for triangle in triangles.tolist():
-            top_faces.append([triangle[0], triangle[1], triangle[2]])
-            bottom_faces.append(
-                [triangle[0] + num_vertices, triangle[1] + num_vertices, triangle[2] + num_vertices])
-
-        # 側面を定義
-        side_faces = []
-        for k in range(num_vertices):
-            next_k = (k + 1) % num_vertices
-            side_faces.append([k, next_k, k + num_vertices])
-            side_faces.append(
-                [next_k, next_k + num_vertices, k + num_vertices])
-
-        # 面を結合
-        faces = np.array(top_faces + bottom_faces + side_faces)
-
-        # メッシュにする
-        polygon_mesh = mesh.Mesh(np.zeros(len(faces), dtype=mesh.Mesh.dtype))
-        for l, f in enumerate(faces):
-            for m in range(3):
-                polygon_mesh.vectors[l][m] = vertices[f[m], :]
-
-        # Trimeshメッシュに変換
-        vertices = polygon_mesh.vectors.reshape(-1, 3)
-        faces = np.arange(len(vertices)).reshape(-1, 3)
-        trimesh_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-
-        # 修正
-        # trimesh.repair.fix_normals(trimesh_mesh)
-
-        trimesh_meshes.append(trimesh_mesh)
-
-    # 複数の Trimesh メッシュが生成されるため、1つのメッシュに結合する
-    concatTriMesh = trimesh.util.concatenate(trimesh_meshes)
+        # 押し出し trimesh extrude_polygonを使う
+        tempMesh = trimesh.creation.extrude_polygon(polygon, pixel_height)
+        trimesh_meshes.append(tempMesh)
+        
+    # メッシュを結合
+    unionMesh = trimesh.boolean.union(trimesh_meshes)
 
     # 処理完了を表示
     print("complete.")
 
-    return concatTriMesh
+    return unionMesh
 
 
 if __name__ == "__main__":
@@ -136,6 +87,7 @@ if __name__ == "__main__":
     # 引数から画像パスを取得
     img_path = ""
     if len(sys.argv) == 1:
+        default_is_bright_z_thickness = False
         img_path = "image.png"
     elif len(sys.argv) != 7:
         print("Usage:")
@@ -156,8 +108,10 @@ if __name__ == "__main__":
     cluster = int(sys.argv[2]) if len(sys.argv) > 2 else default_cluster
     spacing = float(sys.argv[3]) if len(sys.argv) > 3 else default_spacing
     z_height = float(sys.argv[4]) if len(sys.argv) > 4 else default_z_height
-    z_baseheight = float(sys.argv[5]) if len(sys.argv) > 5 else default_base_height
-    is_bright_z_thickness = bool(int(sys.argv[6])) if len(sys.argv) > 6 else default_is_bright_z_thickness
+    z_baseheight = float(sys.argv[5]) if len(
+        sys.argv) > 5 else default_base_height
+    is_bright_z_thickness = bool(int(sys.argv[6])) if len(
+        sys.argv) > 6 else default_is_bright_z_thickness
 
     print(f"Input image path: {img_path}")
     print(f"Cluster: {cluster}, Spacing: {spacing}, Z height: {z_height}, Z base height: {z_baseheight}, is_bright_z_thickness: {is_bright_z_thickness}")
